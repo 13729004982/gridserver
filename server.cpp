@@ -3,6 +3,7 @@
 #include <cstring>
 #include <microhttpd.h>
 #include <json/json.h>
+#include <json/writer.h>
 #include "server.h"
 
 #define PORT 8080
@@ -60,34 +61,30 @@ static int handle_request(void *cls, struct MHD_Connection *connection, const ch
             Json::Value result;
             if (res->next()) 
             {
-                result["id"] = res->getString("id");
-                result["ip"] = res->getString("ip");
-                result["port"] = res->getInt("port");
-                result["voltage"] = res->getDouble("voltage");
-                result["daily_usage"] = res->getDouble("daily_usage");
-                result["monthly_usage"] = res->getDouble("monthly_usage");
-                result["last_update"] = res->getString("last_update");
-                result["last_query"] = res->getString("last_query");
+                result["id"] = Json::Value(res->getString("id"));
+                result["voltage"] = static_cast<double>(res->getDouble("voltage"));
+                result["current"] = static_cast<double>(res->getDouble("current"));
+                result["power"] = static_cast<double>(res->getDouble("power"));
+                result["daily_usage"] = static_cast<double>(res->getDouble("daily_usage"));
+                result["monthly_usage"] = static_cast<double>(res->getDouble("monthly_usage"));
+                result["last_update"] = Json::Value(res->getString("last_update"));
             }
             delete res;
-            Json::StreamWriterBuilder writer;
-            response = Json::writeString(writer, result);
+            Json::FastWriter writer;
+            response = writer.write(result);
         } 
         else if (action == "update") 
         {
             std::string id = request["id"].asString();
-            std::string ip = request["ip"].asString();
-            int port = request["port"].asInt();
             double voltage = request["voltage"].asDouble();
+            double current = request["current"].asDouble();
+            double power = request["power"].asDouble();
             double daily_usage = request["daily_usage"].asDouble();
             double monthly_usage = request["monthly_usage"].asDouble();
             std::string last_update = request["last_update"].asString();
-            std::string last_query = request["last_query"].asString();
 
-            std::string query = "UPDATE machines SET ip='" + ip + "', port=" + std::to_string(port) + 
-                                ", voltage=" + std::to_string(voltage) + ", daily_usage=" + std::to_string(daily_usage) + 
-                                ", monthly_usage=" + std::to_string(monthly_usage) + ", last_update='" + last_update + 
-                                "', last_query='" + last_query + "' WHERE id='" + id + "'";
+            std::string query = "UPDATE machines SET voltage=" + std::to_string(voltage) + ", current=" + std::to_string(current) + ", power=" + std::to_string(power) + ", daily_usage=" + std::to_string(daily_usage) + 
+                                ", monthly_usage=" + std::to_string(monthly_usage) + ", last_update='" + last_update  + "' WHERE id='" + id + "'";
             server->m_db->update(query);
             response = "{\"status\":\"success\"}";
         }
@@ -110,7 +107,7 @@ void Server::initAndRun()
 
     std::cout << "HTTP server running on port " << PORT << std::endl;
 
-    // ±£³Ö·þÎñÆ÷ÔË×÷
+    // ï¿½ï¿½ï¿½Ö·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     getchar();
 
     MHD_stop_daemon(daemon);

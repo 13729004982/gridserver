@@ -20,7 +20,7 @@ public:
 
     void update(const std::string& query);
 private:
-    sql::mysql::MySQL_Driver* driver;
+    sql::Driver* driver;
     sql::Connection* con;
 };
 #endif
