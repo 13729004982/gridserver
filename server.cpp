@@ -52,42 +52,30 @@ static int handle_request(void *cls, struct MHD_Connection *connection, const ch
         reader.parse(request_data, request);
 
         std::string action = request["action"].asString();
+        std::string tableName = request["table"].asString();
         std::string response;
 
         if (action == "get") 
         {
-            std::string id = request["id"].asString();
-            sql::ResultSet* res = server->m_db->query("SELECT * FROM machines WHERE id = '" + id + "'");
+            std::string time = request["Time"].asString();
+            sql::ResultSet* res = server->m_db->query("SELECT * FROM " + tableName +" WHERE Time = '" + time + "'");
             Json::Value result;
             if (res->next()) 
             {
-                result["id"] = Json::Value(res->getString("id"));
-                result["voltage"] = static_cast<double>(res->getDouble("voltage"));
-                result["current"] = static_cast<double>(res->getDouble("current"));
-                result["power"] = static_cast<double>(res->getDouble("power"));
-                result["daily_usage"] = static_cast<double>(res->getDouble("daily_usage"));
-                result["monthly_usage"] = static_cast<double>(res->getDouble("monthly_usage"));
-                result["last_update"] = Json::Value(res->getString("last_update"));
+                result["Time"] = Json::Value(res->getString("Time"));
+                result["Voltage"] = static_cast<double>(res->getDouble("Voltage"));
+                result["Current"] = static_cast<double>(res->getDouble("Current"));
+                result["Power_factor"] = static_cast<int>(res->getInt("Power_factor"));
+                result["Frequency"] = static_cast<double>(res->getDouble("daily_usage"));
+                result["Active_Power"] = static_cast<double>(res->getDouble("Active_Power"));
+                result["Reactive_Power"] = static_cast<double>(res->getDouble("Reactive_Power"));
+                result["Total_load"] = static_cast<double>(res->getDouble("Total_load"));
+                result["Transformer_loss"] = static_cast<double>(res->getDouble("Transformer_loss"));
             }
             delete res;
             Json::FastWriter writer;
             response = writer.write(result);
         } 
-        else if (action == "update") 
-        {
-            std::string id = request["id"].asString();
-            double voltage = request["voltage"].asDouble();
-            double current = request["current"].asDouble();
-            double power = request["power"].asDouble();
-            double daily_usage = request["daily_usage"].asDouble();
-            double monthly_usage = request["monthly_usage"].asDouble();
-            std::string last_update = request["last_update"].asString();
-
-            std::string query = "UPDATE machines SET voltage=" + std::to_string(voltage) + ", current=" + std::to_string(current) + ", power=" + std::to_string(power) + ", daily_usage=" + std::to_string(daily_usage) + 
-                                ", monthly_usage=" + std::to_string(monthly_usage) + ", last_update='" + last_update  + "' WHERE id='" + id + "'";
-            server->m_db->update(query);
-            response = "{\"status\":\"success\"}";
-        }
 
         return send_response(connection, response, MHD_HTTP_OK);
     }
@@ -107,7 +95,6 @@ void Server::initAndRun()
 
     std::cout << "HTTP server running on port " << PORT << std::endl;
 
-    // ���ַ���������
     getchar();
 
     MHD_stop_daemon(daemon);
