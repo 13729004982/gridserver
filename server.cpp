@@ -9,7 +9,6 @@
 #define PORT 8080
 
 struct connection_info_struct {
-    struct MHD_PostProcessor *postprocessor;
     char *data;
     size_t data_size;
 };
@@ -33,31 +32,11 @@ int Server::send_response(struct MHD_Connection *connection, const std::string& 
     return ret;
 }
 
-int Server::iterate_post(void *coninfo_cls, enum MHD_ValueKind kind, const char *key, const char *filename,
-             const char *content_type, const char *transfer_encoding, const char *data, uint64_t off, size_t size)
-{
-    struct connection_info_struct *con_info = (struct connection_info_struct *)coninfo_cls;
-    std::cout << "key:" << key << std::endl;
-    if (0 == strcmp(key, "data")) {
-        std::cout << "point 6" << std::endl;
-        con_info->data = (char *)realloc(con_info->data, con_info->data_size + size + 1);
-        if (con_info->data == NULL)
-            return MHD_NO;
-        
-        memcpy(&(con_info->data[con_info->data_size]), data, size);
-        con_info->data_size += size;
-        con_info->data[con_info->data_size] = '\0';
-    }
-
-    return MHD_YES;
-}
-
 int Server::handle_request(void *cls, struct MHD_Connection *connection, const char *url, const char *method, const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls) 
 {
     Server* server = static_cast<Server*>(cls);
     if (NULL == *con_cls) 
     {
-        std::cout << "point 1" << std::endl;
         struct connection_info_struct *con_info;
 
         con_info = (connection_info_struct*)malloc(sizeof(struct connection_info_struct));
@@ -66,38 +45,35 @@ int Server::handle_request(void *cls, struct MHD_Connection *connection, const c
             return MHD_NO;
         }
 
-        con_info->postprocessor =
-            MHD_create_post_processor(connection, 1024, iterate_post, (void *)con_info);
-
-        if (NULL == con_info->postprocessor) 
-        {
-            std::cerr << "Failed to create post processor" << std::endl;
-            free(con_info);
-            return MHD_NO;
-        }
-
         con_info->data = NULL;
         con_info->data_size = 0;
         *con_cls = (void *)con_info;
-        std::cout << "point 3" << std::endl;
         return MHD_YES;
-    }
-    
-    if (strcmp(method, "POST") != 0) 
-    {
-        std::cout << "point 4" << std::endl;
-        return MHD_NO;
     }
 
     struct connection_info_struct *con_info = (struct connection_info_struct *)(*con_cls);
+    
+    if (strcmp(method, "POST") != 0) 
+    {
+        return MHD_NO;
+    }
+
     if (*upload_data_size != 0) 
     {
-        std::cout << "point 5" << std::endl;
-        MHD_post_process(con_info->postprocessor, upload_data, *upload_data_size);
+        con_info->data = (char *)realloc(con_info->data, con_info->data_size + *upload_data_size + 1);
+        if (con_info->data == NULL) {
+            std::cerr << "Failed to allocate memory for post data" << std::endl;
+            return MHD_NO;
+        }
+        
+        memcpy(&(con_info->data[con_info->data_size]), upload_data, *upload_data_size);
+        con_info->data_size += *upload_data_size;
+        con_info->data[con_info->data_size] = '\0';
+
         *upload_data_size = 0;
         return MHD_YES;
-    }
-    else
+    } 
+    else 
     {
         std::string request_data = con_info->data;
 
@@ -133,6 +109,10 @@ int Server::handle_request(void *cls, struct MHD_Connection *connection, const c
             Json::FastWriter writer;
             response = writer.write(result);
         } 
+
+        free(con_info->data);
+        free(con_info);
+        *con_cls = NULL;
 
         return send_response(connection, response, MHD_HTTP_OK);
     }
