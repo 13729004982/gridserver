@@ -34,10 +34,16 @@ Server::~Server()
 int Server::iterate_post(void *coninfo_cls, enum MHD_ValueKind kind, const char *key, const char *filename,
              const char *content_type, const char *transfer_encoding, const char *data, uint64_t off, size_t size)
 {
-    struct connection_info_struct *con_info = (connection_info_struct*)coninfo_cls;
+    struct connection_info_struct *con_info = (struct connection_info_struct *)coninfo_cls;
 
-    if (0 == strcmp(key, "name")) {
-        con_info->data = strdup(data);
+    if (0 == strcmp(key, "data")) {
+        con_info->data = (char *)realloc(con_info->data, con_info->data_size + size + 1);
+        if (con_info->data == NULL)
+            return MHD_NO;
+        
+        memcpy(&(con_info->data[con_info->data_size]), data, size);
+        con_info->data_size += size;
+        con_info->data[con_info->data_size] = '\0';
     }
 
     return MHD_YES;
