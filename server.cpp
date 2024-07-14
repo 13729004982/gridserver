@@ -77,6 +77,9 @@ int Server::handle_request(void *cls, struct MHD_Connection *connection, const c
     {
         std::string request_data = con_info->data;
 
+        // 添加调试信息
+        std::cout << "Received data: " << request_data << std::endl;
+
         Json::Reader reader;
         Json::Value request;
         if (!reader.parse(request_data, request)) {
