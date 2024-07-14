@@ -23,7 +23,7 @@ Server::~Server()
     delete m_db;
 }
 
- int Server::send_response(struct MHD_Connection *connection, const std::string& response, int status_code) 
+int Server::send_response(struct MHD_Connection *connection, const std::string& response, int status_code) 
 {
     struct MHD_Response *mhd_response;
     mhd_response = MHD_create_response_from_buffer(response.size(), (void*)response.c_str(), MHD_RESPMEM_MUST_COPY);
@@ -74,6 +74,7 @@ int Server::handle_request(void *cls, struct MHD_Connection *connection, const c
         }
 
         con_info->data = NULL;
+        con_info->data_size = 0;
         *con_cls = (void *)con_info;
         std::cout << "point 3" << std::endl;
         return MHD_YES;
@@ -99,7 +100,10 @@ int Server::handle_request(void *cls, struct MHD_Connection *connection, const c
 
         Json::Reader reader;
         Json::Value request;
-        reader.parse(request_data, request);
+        if (!reader.parse(request_data, request)) {
+            std::cerr << "Failed to parse request data: " << reader.getFormattedErrorMessages() << std::endl;
+            return send_response(connection, "Invalid JSON", MHD_HTTP_BAD_REQUEST);
+        }
 
         std::string action = request["action"].asString();
         std::string tableName = request["table"].asString();
@@ -116,7 +120,7 @@ int Server::handle_request(void *cls, struct MHD_Connection *connection, const c
                 result["Voltage"] = Json::Value(static_cast<double>(res->getDouble("Voltage")));
                 result["Current"] = Json::Value(static_cast<double>(res->getDouble("Current")));
                 result["Power_factor"] = Json::Value(static_cast<int>(res->getInt("Power_factor")));
-                result["Frequency"] = Json::Value(static_cast<double>(res->getDouble("daily_usage")));
+                result["Frequency"] = Json::Value(static_cast<double>(res->getDouble("Frequency")));
                 result["Active_Power"] = Json::Value(static_cast<double>(res->getDouble("Active_Power")));
                 result["Reactive_Power"] = Json::Value(static_cast<double>(res->getDouble("Reactive_Power")));
                 result["Total_load"] = Json::Value(static_cast<double>(res->getDouble("Total_load")));
