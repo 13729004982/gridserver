@@ -2,8 +2,8 @@
 #include <string>
 #include <cstring>
 #include <microhttpd.h>
-#include <json/json.h>
-#include <json/writer.h>
+#include <jsoncpp/json/json.h>
+#include <jsoncpp/json/writer.h>
 #include "server.h"
 
 #define PORT 8080
@@ -18,7 +18,7 @@ Server::~Server()
     delete m_db;
 }
 
-static int send_response(struct MHD_Connection *connection, const std::string& response, int status_code) 
+ int Server::send_response(struct MHD_Connection *connection, const std::string& response, int status_code) 
 {
     struct MHD_Response *mhd_response;
     mhd_response = MHD_create_response_from_buffer(response.size(), (void*)response.c_str(), MHD_RESPMEM_MUST_COPY);
@@ -27,7 +27,7 @@ static int send_response(struct MHD_Connection *connection, const std::string& r
     return ret;
 }
 
-static int handle_request(void *cls, struct MHD_Connection *connection, const char *url, const char *method, const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls) 
+int Server::handle_request(void *cls, struct MHD_Connection *connection, const char *url, const char *method, const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls) 
 {
     Server* server = static_cast<Server*>(cls);
     if (strcmp(method, "POST") != 0) 
@@ -63,14 +63,14 @@ static int handle_request(void *cls, struct MHD_Connection *connection, const ch
             if (res->next()) 
             {
                 result["Time"] = Json::Value(res->getString("Time"));
-                result["Voltage"] = static_cast<double>(res->getDouble("Voltage"));
-                result["Current"] = static_cast<double>(res->getDouble("Current"));
-                result["Power_factor"] = static_cast<int>(res->getInt("Power_factor"));
-                result["Frequency"] = static_cast<double>(res->getDouble("daily_usage"));
-                result["Active_Power"] = static_cast<double>(res->getDouble("Active_Power"));
-                result["Reactive_Power"] = static_cast<double>(res->getDouble("Reactive_Power"));
-                result["Total_load"] = static_cast<double>(res->getDouble("Total_load"));
-                result["Transformer_loss"] = static_cast<double>(res->getDouble("Transformer_loss"));
+                result["Voltage"] = Json::Value(static_cast<double>(res->getDouble("Voltage")));
+                result["Current"] = Json::Value(static_cast<double>(res->getDouble("Current")));
+                result["Power_factor"] = Json::Value(static_cast<int>(res->getInt("Power_factor")));
+                result["Frequency"] = Json::Value(static_cast<double>(res->getDouble("daily_usage")));
+                result["Active_Power"] = Json::Value(static_cast<double>(res->getDouble("Active_Power")));
+                result["Reactive_Power"] = Json::Value(static_cast<double>(res->getDouble("Reactive_Power")));
+                result["Total_load"] = Json::Value(static_cast<double>(res->getDouble("Total_load")));
+                result["Transformer_loss"] = Json::Value(static_cast<double>(res->getDouble("Transformer_loss")));
             }
             delete res;
             Json::FastWriter writer;
@@ -86,7 +86,7 @@ static int handle_request(void *cls, struct MHD_Connection *connection, const ch
 void Server::initAndRun() 
 {
     struct MHD_Daemon *daemon;
-    daemon = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY, PORT, NULL, NULL, &handle_request, this, MHD_OPTION_END);
+    daemon = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY, PORT, NULL, NULL, &Server::handle_request, this, MHD_OPTION_END);
     if (NULL == daemon) 
     {
         std::cerr << "Failed to start HTTP server" << std::endl;

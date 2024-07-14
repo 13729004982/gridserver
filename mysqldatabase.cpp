@@ -12,7 +12,7 @@ MySQLDatabase::~MySQLDatabase()
     delete con;
 }
 
-MySQLDatabase::sql::ResultSet* query(const std::string& query) 
+sql::ResultSet*MySQLDatabase::query(const std::string& query) 
 {
     sql::Statement* stmt = con->createStatement();
     sql::ResultSet* res = stmt->executeQuery(query);
@@ -20,7 +20,7 @@ MySQLDatabase::sql::ResultSet* query(const std::string& query)
     return res;
 }
 
-MySQLDatabase::void update(const std::string& query) 
+void MySQLDatabase::update(const std::string& query) 
 {
     sql::Statement* stmt = con->createStatement();
     stmt->executeUpdate(query);
