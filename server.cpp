@@ -8,6 +8,11 @@
 
 #define PORT 8080
 
+struct connection_info_struct {
+    struct MHD_PostProcessor *postprocessor;
+    char *data;
+};
+
 Server::Server(const std::string& host, const std::string& user, const std::string& password, const std::string& db) 
 {
     m_db = new MySQLDatabase(host, user, password, db);
@@ -25,6 +30,18 @@ Server::~Server()
     int ret = MHD_queue_response(connection, status_code, mhd_response);
     MHD_destroy_response(mhd_response);
     return ret;
+}
+
+int Server::iterate_post(void *coninfo_cls, enum MHD_ValueKind kind, const char *key, const char *filename,
+             const char *content_type, const char *transfer_encoding, const char *data, uint64_t off, size_t size)
+{
+    struct connection_info_struct *con_info = coninfo_cls;
+
+    if (0 == strcmp(key, "name")) {
+        con_info->data = strdup(data);
+    }
+
+    return MHD_YES;
 }
 
 int Server::handle_request(void *cls, struct MHD_Connection *connection, const char *url, const char *method, const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls) 
