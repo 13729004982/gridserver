@@ -36,7 +36,7 @@ int Server::iterate_post(void *coninfo_cls, enum MHD_ValueKind kind, const char 
              const char *content_type, const char *transfer_encoding, const char *data, uint64_t off, size_t size)
 {
     struct connection_info_struct *con_info = (struct connection_info_struct *)coninfo_cls;
-
+    std::cout << "key:" << key << std::endl;
     if (0 == strcmp(key, "data")) {
         std::cout << "point 6" << std::endl;
         con_info->data = (char *)realloc(con_info->data, con_info->data_size + size + 1);
