@@ -10,6 +10,7 @@
 struct connection_info_struct {
     struct MHD_PostProcessor *postprocessor;
     char *data;
+    size_t data_size;
 };
 
 Server::Server(const std::string& host, const std::string& user, const std::string& password, const std::string& db) 
