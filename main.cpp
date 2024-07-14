@@ -2,7 +2,7 @@
 
 int main() 
 {
-    Server server("localhost", "root", "password", "test");
+    Server server("121.36.3.126", "root", "Wxcrrdtd20021106!", "electricity_data");
     server.initAndRun();
     return 0;
 }
