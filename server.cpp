@@ -10,6 +10,7 @@
 struct connection_info_struct {
     struct MHD_PostProcessor *postprocessor;
     char *data;
+    size_t data_size;
 };
 
 Server::Server(const std::string& host, const std::string& user, const std::string& password, const std::string& db) 
@@ -64,7 +65,6 @@ int Server::handle_request(void *cls, struct MHD_Connection *connection, const c
         }
 
         con_info->data = NULL;
-        con_info->data_size = 0;
         *con_cls = (void *)con_info;
 
         return MHD_YES;
@@ -74,8 +74,8 @@ int Server::handle_request(void *cls, struct MHD_Connection *connection, const c
     {
         return MHD_NO;
     }
-    
-    struct connection_info_struct *con_info = *con_cls;
+
+    struct connection_info_struct *con_info = static_cast<connection_info_struct>(*con_cls);
     if (*upload_data_size != 0) 
     {
         MHD_post_process(con_info->postprocessor, upload_data, *upload_data_size);
