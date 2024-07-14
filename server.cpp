@@ -48,6 +48,7 @@ int Server::handle_request(void *cls, struct MHD_Connection *connection, const c
     Server* server = static_cast<Server*>(cls);
     if (NULL == *con_cls) 
     {
+        std::cout << "point 1" << std::endl;
         struct connection_info_struct *con_info;
 
         con_info = (connection_info_struct*)malloc(sizeof(struct connection_info_struct));
@@ -59,33 +60,34 @@ int Server::handle_request(void *cls, struct MHD_Connection *connection, const c
 
         if (NULL == con_info->postprocessor) 
         {
+            std::cout << "point 2" << std::endl;
             free(con_info);
             return MHD_NO;
         }
 
         con_info->data = NULL;
         *con_cls = (void *)con_info;
-
+        std::cout << "point 3" << std::endl;
         return MHD_YES;
     }
     
     if (strcmp(method, "POST") != 0) 
     {
+        std::cout << "point 4" << std::endl;
         return MHD_NO;
     }
 
     struct connection_info_struct *con_info = (struct connection_info_struct *)(*con_cls);
     if (*upload_data_size != 0) 
     {
+        std::cout << "point 5" << std::endl;
         MHD_post_process(con_info->postprocessor, upload_data, *upload_data_size);
         *upload_data_size = 0;
         return MHD_YES;
     }
-
-    if (*upload_data_size != 0) 
+    else
     {
-        std::string request_data(upload_data, *upload_data_size);
-        *upload_data_size = 0;
+        std::string request_data = con_info->data;
 
         Json::Reader reader;
         Json::Value request;
