@@ -50,7 +50,7 @@ int Server::handle_request(void *cls, struct MHD_Connection *connection, const c
     {
         struct connection_info_struct *con_info;
 
-        con_info = malloc(sizeof(struct connection_info_struct));
+        con_info = static_cast<connection_info_struct>(sizeof(struct connection_info_struct));
         if (NULL == con_info)
             return MHD_NO;
 
@@ -64,6 +64,7 @@ int Server::handle_request(void *cls, struct MHD_Connection *connection, const c
         }
 
         con_info->data = NULL;
+        con_info->data_size = 0;
         *con_cls = (void *)con_info;
 
         return MHD_YES;
@@ -73,7 +74,8 @@ int Server::handle_request(void *cls, struct MHD_Connection *connection, const c
     {
         return MHD_NO;
     }
-
+    
+    struct connection_info_struct *con_info = *con_cls;
     if (*upload_data_size != 0) 
     {
         MHD_post_process(con_info->postprocessor, upload_data, *upload_data_size);
