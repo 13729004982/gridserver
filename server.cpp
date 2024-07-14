@@ -4,6 +4,9 @@
 #include <jsoncpp/json/json.h>
 #include <jsoncpp/json/writer.h>
 #include <microhttpd.h>
+#include <mysql_driver.h>
+#include <mysql_connection.h>
+#include <cppconn/exception.h>
 #include "server.h"
 
 #define PORT 8080
@@ -15,7 +18,15 @@ struct connection_info_struct {
 
 Server::Server(const std::string& host, const std::string& user, const std::string& password, const std::string& db) 
 {
-    m_db = new MySQLDatabase(host, user, password, db);
+    try {
+        m_db = new MySQLDatabase(host, user, password, db);
+    } catch (sql::SQLException &e) {
+        std::cerr << "SQLException during MySQLDatabase construction: " << e.what() << std::endl;
+        throw;
+    } catch (std::exception &e) {
+        std::cerr << "Exception during MySQLDatabase construction: " << e.what() << std::endl;
+        throw;
+    }
 }
 
 Server::~Server() 
@@ -82,42 +93,53 @@ int Server::handle_request(void *cls, struct MHD_Connection *connection, const c
 
         Json::Reader reader;
         Json::Value request;
-        if (!reader.parse(request_data, request)) {
-            std::cerr << "Failed to parse request data: " << reader.getFormattedErrorMessages() << std::endl;
-            return send_response(connection, "Invalid JSON", MHD_HTTP_BAD_REQUEST);
-        }
-
-        std::string action = request["action"].asString();
-        std::string tableName = request["table"].asString();
-        std::string response;
-
-        if (action == "get") 
-        {
-            std::string time = request["Time"].asString();
-            sql::ResultSet* res = server->m_db->query("SELECT * FROM " + tableName +" WHERE Time = '" + time + "'");
-            Json::Value result;
-            if (res->next()) 
-            {
-                result["Time"] = Json::Value(res->getString("Time"));
-                result["Voltage"] = Json::Value(static_cast<double>(res->getDouble("Voltage")));
-                result["Current"] = Json::Value(static_cast<double>(res->getDouble("Current")));
-                result["Power_factor"] = Json::Value(static_cast<int>(res->getInt("Power_factor")));
-                result["Frequency"] = Json::Value(static_cast<double>(res->getDouble("Frequency")));
-                result["Active_Power"] = Json::Value(static_cast<double>(res->getDouble("Active_Power")));
-                result["Reactive_Power"] = Json::Value(static_cast<double>(res->getDouble("Reactive_Power")));
-                result["Total_load"] = Json::Value(static_cast<double>(res->getDouble("Total_load")));
-                result["Transformer_loss"] = Json::Value(static_cast<double>(res->getDouble("Transformer_loss")));
+        try {
+            if (!reader.parse(request_data, request)) {
+                std::cerr << "Failed to parse request data: " << reader.getFormattedErrorMessages() << std::endl;
+                return send_response(connection, "Invalid JSON", MHD_HTTP_BAD_REQUEST);
             }
-            delete res;
-            Json::FastWriter writer;
-            response = writer.write(result);
-        } 
 
-        free(con_info->data);
-        free(con_info);
-        *con_cls = NULL;
+            std::string action = request["action"].asString();
+            std::string tableName = request["table"].asString();
+            std::string response;
 
-        return send_response(connection, response, MHD_HTTP_OK);
+            if (action == "get") 
+            {
+                std::string time = request["Time"].asString();
+                try {
+                    sql::ResultSet* res = server->m_db->query("SELECT * FROM " + tableName +" WHERE Time = '" + time + "'");
+                    Json::Value result;
+                    if (res->next()) 
+                    {
+                        result["Time"] = Json::Value(res->getString("Time"));
+                        result["Voltage"] = Json::Value(static_cast<double>(res->getDouble("Voltage")));
+                        result["Current"] = Json::Value(static_cast<double>(res->getDouble("Current")));
+                        result["Power_factor"] = Json::Value(static_cast<int>(res->getInt("Power_factor")));
+                        result["Frequency"] = Json::Value(static_cast<double>(res->getDouble("Frequency")));
+                        result["Active_Power"] = Json::Value(static_cast<double>(res->getDouble("Active_Power")));
+                        result["Reactive_Power"] = Json::Value(static_cast<double>(res->getDouble("Reactive_Power")));
+                        result["Total_load"] = Json::Value(static_cast<double>(res->getDouble("Total_load")));
+                        result["Transformer_loss"] = Json::Value(static_cast<double>(res->getDouble("Transformer_loss")));
+                    }
+                    delete res;
+                    Json::FastWriter writer;
+                    response = writer.write(result);
+                } catch (sql::SQLException &e) {
+                    std::cerr << "SQLException: " << e.what() << std::endl;
+                    response = "Database query failed: " + std::string(e.what());
+                    return send_response(connection, response, MHD_HTTP_INTERNAL_SERVER_ERROR);
+                }
+            }
+
+            free(con_info->data);
+            free(con_info);
+            *con_cls = NULL;
+
+            return send_response(connection, response, MHD_HTTP_OK);
+        } catch (std::exception &e) {
+            std::cerr << "Exception: " << e.what() << std::endl;
+            return send_response(connection, "Server Error", MHD_HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     return MHD_NO;
@@ -125,17 +147,21 @@ int Server::handle_request(void *cls, struct MHD_Connection *connection, const c
 
 void Server::initAndRun() 
 {
-    struct MHD_Daemon *daemon;
-    daemon = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY, PORT, NULL, NULL, &Server::handle_request, this, MHD_OPTION_END);
-    if (NULL == daemon) 
-    {
-        std::cerr << "Failed to start HTTP server" << std::endl;
-        return;
+    try {
+        struct MHD_Daemon *daemon;
+        daemon = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY, PORT, NULL, NULL, &Server::handle_request, this, MHD_OPTION_END);
+        if (NULL == daemon) 
+        {
+            std::cerr << "Failed to start HTTP server" << std::endl;
+            return;
+        }
+
+        std::cout << "HTTP server running on port " << PORT << std::endl;
+
+        getchar();
+
+        MHD_stop_daemon(daemon);
+    } catch (std::exception &e) {
+        std::cerr << "Exception during server initialization or run: " << e.what() << std::endl;
     }
-
-    std::cout << "HTTP server running on port " << PORT << std::endl;
-
-    getchar();
-
-    MHD_stop_daemon(daemon);
 }
