@@ -2,7 +2,11 @@
 #define _SERVER_H_
 
 #include "mysqldatabase.h"
-#include <string>
+#include <microhttpd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 
 class Server 
 {

@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string>
 #include <cstring>
-#include <microhttpd.h>
 #include <jsoncpp/json/json.h>
 #include <jsoncpp/json/writer.h>
 #include "server.h"
