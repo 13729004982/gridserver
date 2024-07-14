@@ -30,15 +30,38 @@ Server::~Server()
 int Server::handle_request(void *cls, struct MHD_Connection *connection, const char *url, const char *method, const char *version, const char *upload_data, size_t *upload_data_size, void **con_cls) 
 {
     Server* server = static_cast<Server*>(cls);
+    if (NULL == *con_cls) 
+    {
+        struct connection_info_struct *con_info;
+
+        con_info = malloc(sizeof(struct connection_info_struct));
+        if (NULL == con_info)
+            return MHD_NO;
+
+        con_info->postprocessor =
+            MHD_create_post_processor(connection, 1024, iterate_post, (void *)con_info);
+
+        if (NULL == con_info->postprocessor) 
+        {
+            free(con_info);
+            return MHD_NO;
+        }
+
+        con_info->data = NULL;
+        *con_cls = (void *)con_info;
+
+        return MHD_YES;
+    }
+    
     if (strcmp(method, "POST") != 0) 
     {
         return MHD_NO;
     }
 
-    static int dummy;
-    if (&dummy != *con_cls) 
+    if (*upload_data_size != 0) 
     {
-        *con_cls = &dummy;
+        MHD_post_process(con_info->postprocessor, upload_data, *upload_data_size);
+        *upload_data_size = 0;
         return MHD_YES;
     }
 
