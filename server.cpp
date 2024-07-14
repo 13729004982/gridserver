@@ -34,7 +34,7 @@ Server::~Server()
 int Server::iterate_post(void *coninfo_cls, enum MHD_ValueKind kind, const char *key, const char *filename,
              const char *content_type, const char *transfer_encoding, const char *data, uint64_t off, size_t size)
 {
-    struct connection_info_struct *con_info = coninfo_cls;
+    struct connection_info_struct *con_info = (connection_info_struct*)coninfo_cls;
 
     if (0 == strcmp(key, "name")) {
         con_info->data = strdup(data);
@@ -50,7 +50,7 @@ int Server::handle_request(void *cls, struct MHD_Connection *connection, const c
     {
         struct connection_info_struct *con_info;
 
-        con_info = static_cast<connection_info_struct>(sizeof(struct connection_info_struct));
+        con_info = (connection_info_struct*)malloc(sizeof(struct connection_info_struct));
         if (NULL == con_info)
             return MHD_NO;
 
