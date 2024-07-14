@@ -138,6 +138,9 @@ int Server::handle_request(void *cls, struct MHD_Connection *connection, const c
             return send_response(connection, response, MHD_HTTP_OK);
         } catch (std::exception &e) {
             std::cerr << "Exception: " << e.what() << std::endl;
+            free(con_info->data);
+            free(con_info);
+            *con_cls = NULL;
             return send_response(connection, "Server Error", MHD_HTTP_INTERNAL_SERVER_ERROR);
         }
     }
