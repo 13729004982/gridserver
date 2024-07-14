@@ -3,6 +3,7 @@
 #include <cstring>
 #include <jsoncpp/json/json.h>
 #include <jsoncpp/json/writer.h>
+#include <microhttpd.h>
 #include "server.h"
 
 #define PORT 8080
@@ -60,15 +61,17 @@ int Server::handle_request(void *cls, struct MHD_Connection *connection, const c
         struct connection_info_struct *con_info;
 
         con_info = (connection_info_struct*)malloc(sizeof(struct connection_info_struct));
-        if (NULL == con_info)
+        if (NULL == con_info) {
+            std::cerr << "Failed to allocate memory for connection_info_struct" << std::endl;
             return MHD_NO;
+        }
 
         con_info->postprocessor =
             MHD_create_post_processor(connection, 1024, iterate_post, (void *)con_info);
 
         if (NULL == con_info->postprocessor) 
         {
-            std::cout << "point 2" << std::endl;
+            std::cerr << "Failed to create post processor" << std::endl;
             free(con_info);
             return MHD_NO;
         }
