@@ -7,7 +7,7 @@
 #include <mysql_driver.h>
 #include <mysql_connection.h>
 #include <cppconn/exception.h>
-#include <thread> 
+#include <thread>
 #include <chrono>
 #include "server.h"
 
@@ -101,13 +101,21 @@ int Server::handle_request(void *cls, struct MHD_Connection *connection, const c
                 return send_response(connection, "Invalid JSON", MHD_HTTP_BAD_REQUEST);
             }
 
+            if (!request["action"].isString() || !request["table"].isString()) {
+                return send_response(connection, "Invalid JSON format: 'action' or 'table' is not a string", MHD_HTTP_BAD_REQUEST);
+            }
+
             std::string action = request["action"].asString();
             std::string tableName = request["table"].asString();
             std::string response;
 
             if (action == "get") 
             {
-                std::string time = request["Time"].asString();
+                std::string time = request["Time"].isString() ? request["Time"].asString() : "";
+                if (time.empty()) {
+                    return send_response(connection, "Invalid JSON format: 'Time' is missing or not a string", MHD_HTTP_BAD_REQUEST);
+                }
+
                 try {
                     sql::ResultSet* res = server->m_db->query("SELECT * FROM " + tableName +" WHERE Time = '" + time + "'");
                     Json::Value result;
@@ -128,8 +136,7 @@ int Server::handle_request(void *cls, struct MHD_Connection *connection, const c
                     response = writer.write(result);
                 } catch (sql::SQLException &e) {
                     std::cerr << "SQLException: " << e.what() << std::endl;
-                    response = "Database query failed: " + std::string(e.what());
-                    return send_response(connection, response, MHD_HTTP_INTERNAL_SERVER_ERROR);
+                    return send_response(connection, "Database query failed: " + std::string(e.what()), MHD_HTTP_INTERNAL_SERVER_ERROR);
                 }
             }
 
@@ -138,8 +145,7 @@ int Server::handle_request(void *cls, struct MHD_Connection *connection, const c
             *con_cls = NULL;
 
             return send_response(connection, response, MHD_HTTP_OK);
-        } catch (std::exception &e) {
-            server->reconnectDB(server->m_db);        
+        } catch (const std::exception &e) {
             std::cerr << "Exception: " << e.what() << std::endl;
             free(con_info->data);
             free(con_info);
@@ -167,7 +173,7 @@ void Server::initAndRun()
         getchar();
 
         MHD_stop_daemon(daemon);
-    } catch (std::exception &e) {
+    } catch (const std::exception &e) {
         std::cerr << "Exception during server initialization or run: " << e.what() << std::endl;
     }
 }
