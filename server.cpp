@@ -137,6 +137,7 @@ int Server::handle_request(void *cls, struct MHD_Connection *connection, const c
 
             return send_response(connection, response, MHD_HTTP_OK);
         } catch (std::exception &e) {
+            reconnectDB();        
             std::cerr << "Exception: " << e.what() << std::endl;
             free(con_info->data);
             free(con_info);
@@ -166,5 +167,20 @@ void Server::initAndRun()
         MHD_stop_daemon(daemon);
     } catch (std::exception &e) {
         std::cerr << "Exception during server initialization or run: " << e.what() << std::endl;
+    }
+}
+
+void Server::reconnectDB()
+{
+    while (true)
+    {
+        try {
+            m_db->reconnect();
+            std::cout << "Database reconnected successfully" << std::endl;
+            break;
+        } catch (sql::SQLException &e) {
+            std::cerr << "SQLException during reconnect: " << e.what() << std::endl;
+            std::this_thread::sleep_for(std::chrono::seconds(5)); // µÈ´ý5ÃëºóÖØÊÔ
+        }
     }
 }
