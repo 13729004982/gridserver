@@ -7,6 +7,8 @@
 #include <mysql_driver.h>
 #include <mysql_connection.h>
 #include <cppconn/exception.h>
+#include <thread> 
+#include <chrono>
 #include "server.h"
 
 #define PORT 8080
@@ -137,7 +139,7 @@ int Server::handle_request(void *cls, struct MHD_Connection *connection, const c
 
             return send_response(connection, response, MHD_HTTP_OK);
         } catch (std::exception &e) {
-            reconnectDB();        
+            server->reconnectDB(server->m_db);        
             std::cerr << "Exception: " << e.what() << std::endl;
             free(con_info->data);
             free(con_info);
@@ -170,12 +172,12 @@ void Server::initAndRun()
     }
 }
 
-void Server::reconnectDB()
+void Server::reconnectDB(MySQLDatabase* db)
 {
     while (true)
     {
         try {
-            m_db->reconnect();
+            db->reconnect();
             std::cout << "Database reconnected successfully" << std::endl;
             break;
         } catch (sql::SQLException &e) {

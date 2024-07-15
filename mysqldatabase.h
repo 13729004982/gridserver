@@ -19,8 +19,14 @@ public:
     sql::ResultSet* query(const std::string& query);
 
     void update(const std::string& query);
+
+    void reconnect();
 private:
     sql::Driver* driver;
     sql::Connection* con;
+    std::string m_host;
+    std::string m_user;
+    std::string m_password;
+    std::string m_db;
 };
 #endif
